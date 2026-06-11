@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spin the Wheel – Prepositional Collocations</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d28;
+    --card: #22263a;
+    --border: #2e3350;
+    --text: #e8eaf6;
+    --muted: #8b90b8;
+    --accent1: #7c6af7;
+    --accent2: #3dd6c4;
+    --accent3: #f4845f;
+    --gold: #f5c842;
+    --shadow: 0 8px 40px rgba(0,0,0,0.5);
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    overflow-x: hidden;
+  }
+
+  header {
+    width: 100%;
+    max-width: 780px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0 4px;
+    gap: 12px;
+  }
+
+  .header-left h1 {
+    font-size: clamp(1rem, 2.5vw, 1.3rem);
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+  .header-left p {
+    font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .counter {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 14px;
+    font-size: clamp(0.75rem, 2vw, 0.9rem);
+    font-weight: 600;
+    color: var(--gold);
+    white-space: nowrap;
+  }
+  .counter span { color: var(--muted); font-weight: 400; }
+
+  .btn-reset {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-reset:hover { border-color: var(--accent2); color: var(--accent2); background: rgba(61,214,196,0.08); }
+  .btn-reset span { font-size: 0.78rem; font-weight: 600; }
+
+  .wheel-area {
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 10px 0 0;
+    position: relative;
+  }
+
+  .wheel-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 620px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: block;
+  }
+
+  .pointer {
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 13px solid transparent;
+    border-right: 13px solid transparent;
+    border-top: 32px solid var(--gold);
+    filter: drop-shadow(0 3px 8px rgba(245,200,66,0.5));
+    z-index: 10;
+  }
+
+  .spin-btn {
+    margin-top: 14px;
+    background: linear-gradient(135deg, var(--accent1), #5a4fd9);
+    border: none;
+    border-radius: 50px;
+    padding: 14px 48px;
+    font-size: clamp(0.9rem, 2.5vw, 1.05rem);
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    box-shadow: 0 4px 20px rgba(124,106,247,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .spin-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(124,106,247,0.55);
+  }
+  .spin-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ── MODAL OVERLAY ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 9, 14, 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal-overlay.visible { display: flex; }
+
+  .result-card {
+    width: 100%;
+    max-width: 640px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px 30px 28px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.88); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.13); color: var(--text); }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .result-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .result-collocation {
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  .result-example {
+    font-size: clamp(0.95rem, 2.2vw, 1.1rem);
+    color: var(--muted);
+    margin-bottom: 18px;
+    padding-left: 30px;
+    line-height: 1.5;
+  }
+
+  .result-prompt {
+    background: rgba(124,106,247,0.1);
+    border-left: 4px solid var(--accent1);
+    border-radius: 0 10px 10px 0;
+    padding: 18px 20px;
+    font-size: clamp(1.05rem, 2.8vw, 1.3rem);
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .result-prompt .label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent1);
+    margin-bottom: 8px;
+  }
+
+  .done-msg {
+    width: 100%;
+    max-width: 500px;
+    background: var(--card);
+    border: 1px solid var(--accent2);
+    border-radius: 20px;
+    padding: 36px;
+    text-align: center;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .done-msg h2 { color: var(--accent2); font-size: 1.6rem; margin-bottom: 10px; }
+  .done-msg p { color: var(--muted); font-size: 1rem; line-height: 1.5; }
+  .done-msg .done-reset-btn {
+    margin-top: 20px;
+    background: linear-gradient(135deg, var(--accent2), #1ea898);
+    border: none;
+    border-radius: 50px;
+    padding: 12px 32px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f1117;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .done-msg .done-reset-btn:hover { transform: translateY(-2px); }
+
+  @media (max-width: 500px) {
+    .wheel-wrapper { max-width: 95vw; }
+    .spin-btn { padding: 12px 36px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Prepositional Collocations</h1>
+    <p>Art Gallery of NSW – Class Reflection</p>
+  </div>
+  <div class="header-right">
+    <div class="counter" id="counter">47 <span>left</span></div>
+    <button class="btn-reset" id="btnReset" title="Reset wheel">
+      &#8635; <span>Reset</span>
+    </button>
+  </div>
+</header>
+
+<div class="wheel-area">
+  <div class="wheel-wrapper">
+    <div class="pointer"></div>
+    <canvas id="wheelCanvas"></canvas>
+  </div>
+  <button class="spin-btn" id="spinBtn">SPIN</button>
+</div>
+
+<!-- Result modal -->
+<div class="modal-overlay" id="resultOverlay">
+  <div class="result-card" id="resultCard">
+    <button class="modal-close" id="modalClose" title="Close">✕</button>
+    <div class="result-header">
+      <div class="result-dot" id="resultDot"></div>
+      <div class="result-collocation" id="resultCollocation"></div>
+    </div>
+    <div class="result-prompt">
+      <div class="label">Your turn – make a sentence</div>
+      <div id="resultPrompt"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Done modal -->
+<div class="modal-overlay" id="doneOverlay">
+  <div class="done-msg" id="doneMsg">
+    <h2>All done! 🎉</h2>
+    <p>You used all 47 collocations. Press Reset to start again.</p>
+    <button class="done-reset-btn" id="doneResetBtn">&#8635; Reset</button>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const ALL_COLLOCATIONS = [
+  { c:"afraid of / scared of", ex:"He is scared of huntsman spiders.", p:"Were you afraid of anything at the gallery? What was it? Tell us about it." },
+  { c:"afraid to", ex:"I am afraid to swim at night.", p:"Was there anything at the gallery you were afraid to do or try? What happened?" },
+  { c:"agree on", ex:"We agreed on a time to meet.", p:"Did your group agree on a favourite part of the excursion? What did you decide?" },
+  { c:"agree with", ex:"I agree with you on that.", p:"Do you agree with the way the gallery was organised? What did you think was good or not good?" },
+  { c:"angry about", ex:"She is angry about the noise.", p:"Was there anything at the gallery you felt a little angry about or unhappy with? Describe it." },
+  { c:"angry with", ex:"I am angry with my neighbour.", p:"Were you angry with anyone during the excursion? What happened? Tell the class." },
+  { c:"apologise for", ex:"She apologised for being late.", p:"Did anyone in your group have to apologise for something during the excursion? What was it?" },
+  { c:"apologise to", ex:"He apologised to his boss.", p:"Did you need to apologise to anyone on the excursion? Or did someone apologise to you?" },
+  { c:"apply for", ex:"I applied for the job in the CBD.", p:"The gallery has free programs and tours. Would you apply for any of them? Why or why not?" },
+  { c:"apply to", ex:"She applied to three universities.", p:"Can you apply to visit the gallery for free? Did you know it was free? What did you think?" },
+  { c:"arrive at", ex:"We arrived at the servo just in time.", p:"What time did you arrive at the gallery? Was it on time? What did you do first?" },
+  { c:"arrive in", ex:"They arrived in Canberra yesterday.", p:"Tell us about when you arrived in Sydney. Was it like seeing the gallery area for the first time?" },
+  { c:"belong to", ex:"This belongs to my flatmate.", p:"A famous painting at the gallery belongs to Australia. Can you remember any artwork? Who does it belong to?" },
+  { c:"borrow from", ex:"Can I borrow your charger?", p:"Did you borrow anything from someone on the excursion – a pen, a phone charger, money? Tell us." },
+  { c:"cause of", ex:"Stress is a common cause of headaches.", p:"What was the cause of any problem on the excursion? For example: getting lost, tired, or hungry?" },
+  { c:"complain about", ex:"He always complains about the traffic.", p:"Did you or someone else complain about anything on the excursion? What was the problem?" },
+  { c:"complain to", ex:"She complained to the council.", p:"If something was wrong at the gallery, who would you complain to? What would you say?" },
+  { c:"cope with", ex:"It is hard to cope with the heat.", p:"Was it hard to cope with anything on the day – the walking, the crowds, the art? Tell us." },
+  { c:"depend on", ex:"It depends on the weather.", p:"Did any part of the excursion depend on the weather or transport? What happened?" },
+  { c:"difference between", ex:"What is the difference between a debit and a credit card?", p:"What is the difference between the Art Gallery of NSW and another place you have visited? Compare them." },
+  { c:"different from", ex:"Sydney is different from Melbourne.", p:"How is the Art Gallery of NSW different from art galleries or museums in your home country?" },
+  { c:"different to", ex:"This coffee tastes different to the usual.", p:"Was the gallery experience different to what you expected? What surprised you?" },
+  { c:"excited about", ex:"We are excited about the long weekend.", p:"Were you excited about the excursion before the day? Are you excited about the next excursion?" },
+  { c:"fond of", ex:"She is fond of Tim Tams.", p:"Are you fond of art? Did the gallery change how you feel about it? Tell us." },
+  { c:"good at", ex:"She is good at footy.", p:"Do you think you are good at looking at art and understanding it? Give an example from the gallery." },
+  { c:"good for", ex:"Walking is good for you.", p:"Do you think excursions like this are good for your English learning? Why or why not?" },
+  { c:"good with", ex:"He is really good with kids.", p:"Were any of the gallery staff good with you – friendly and helpful? Describe them." },
+  { c:"interested in", ex:"Are you interested in AFL?", p:"Were you interested in any of the artworks at the gallery? Tell us about one you remember." },
+  { c:"keen on", ex:"Are you keen on hiking?", p:"Are you keen on visiting another gallery or museum for the next excursion? Where would you like to go?" },
+  { c:"lend to", ex:"I lent my umbrella to Sam.", p:"Did you lend anything to a classmate on the excursion – money, an umbrella, a jacket? Tell us." },
+  { c:"listen to", ex:"I listen to Triple J every morning.", p:"Did you listen to any audio guide or tour guide at the gallery? Was it helpful? Why or why not?" },
+  { c:"look at", ex:"Look at that kookaburra!", p:"Which artwork did you spend the most time looking at? Describe it to the class." },
+  { c:"married to", ex:"She is married to a nurse.", p:"Some famous artists were married to other artists. Do you know any examples? Use 'married to' in a sentence about yourself or someone you know." },
+  { c:"problem with", ex:"There is a problem with the internet connection.", p:"Was there a problem with anything on the excursion – transport, food, the weather? Tell us what happened." },
+  { c:"proud of", ex:"She is proud of her daughter.", p:"Are you proud of yourself for something you did on the excursion? Tell us what it was." },
+  { c:"reason for", ex:"What is the reason for the delay?", p:"What was the reason for choosing the Art Gallery of NSW for the excursion? Do you think it was a good reason?" },
+  { c:"rely on", ex:"You can always rely on your mates.", p:"Did you rely on a classmate or teacher for help during the excursion? What did they do?" },
+  { c:"responsible for", ex:"Who is responsible for the project?", p:"Who was responsible for organising the excursion? Do you think they did a good job?" },
+  { c:"same as", ex:"Her accent is the same as mine.", p:"Was the gallery the same as you imagined? Or was it different? Use 'the same as' in your answer." },
+  { c:"sick of", ex:"I am sick of waiting.", p:"Were you sick of walking or waiting at any point during the excursion? Tell us when." },
+  { c:"spend on", ex:"I spend too much on takeaway.", p:"How much did you spend on food, transport or other things on the excursion day? Was it too much?" },
+  { c:"talk about", ex:"Let us talk about the plan.", p:"What did you talk about with your classmates during the excursion? Give one example." },
+  { c:"talk to / talk with", ex:"Can I talk to you for a sec?", p:"Did you talk to any gallery staff or strangers at the gallery? What did you say? How did it feel?" },
+  { c:"think about", ex:"I am thinking about moving to Brisbane.", p:"Are you still thinking about any artwork or moment from the gallery? What is it? Why does it stay in your mind?" },
+  { c:"think of", ex:"What do you think of Vegemite?", p:"What do you think of the Art Gallery of NSW overall? Would you go back? Tell us your opinion." },
+  { c:"used to", ex:"I am used to the heat in Darwin.", p:"Are you used to visiting museums or galleries? Was this excursion easy or strange for you?" },
+  { c:"worried about", ex:"I am worried about the bushfire season.", p:"Were you worried about anything before or during the excursion? What was it? What happened in the end?" },
+];
+
+// ── COLOUR PALETTE ─────────────────────────────────────────────────────────────
+// Three families: purple, teal, coral — light/mid/dark each
+const PALETTE = [
+  "#7c6af7","#a99bf9","#5248c4",   // purple family
+  "#3dd6c4","#78e8dc","#1ea898",   // teal family
+  "#f4845f","#f7ab8e","#d85e37",   // coral family
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let segments = [...ALL_COLLOCATIONS];
+let spinning = false;
+let currentAngle = 0;
+let audioCtx = null;
+
+// ── CANVAS SETUP ───────────────────────────────────────────────────────────────
+const canvas = document.getElementById('wheelCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const wrapper = canvas.parentElement;
+  const size = wrapper.clientWidth;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  ctx.scale(dpr, dpr);
+  drawWheel();
+}
+
+window.addEventListener('resize', resizeCanvas);
+
+// ── DRAW WHEEL ─────────────────────────────────────────────────────────────────
+function drawWheel() {
+  const logicalSize = canvas.width / (window.devicePixelRatio || 1);
+  const cx = logicalSize / 2;
+  const cy = logicalSize / 2;
+  const outerR = cx - 8;
+  const innerHub = outerR * 0.085;
+
+  ctx.clearRect(0, 0, logicalSize, logicalSize);
+
+  const n = segments.length;
+
+  if (n === 0) {
+    // Empty state
+    ctx.beginPath();
+    ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+    ctx.fillStyle = '#1a1d28';
+    ctx.fill();
+    ctx.strokeStyle = '#2e3350';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.fillStyle = '#8b90b8';
+    ctx.font = `bold ${outerR * 0.12}px Segoe UI, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('All done!', cx, cy);
+    return;
+  }
+
+  const arc = (Math.PI * 2) / n;
+
+  // Outer glow ring
+  const grd = ctx.createRadialGradient(cx, cy, outerR * 0.85, cx, cy, outerR + 6);
+  grd.addColorStop(0, 'rgba(124,106,247,0.15)');
+  grd.addColorStop(1, 'rgba(124,106,247,0)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, outerR + 6, 0, Math.PI * 2);
+  ctx.fillStyle = grd;
+  ctx.fill();
+
+  // Segments
+  for (let i = 0; i < n; i++) {
+    const startAngle = currentAngle + i * arc;
+    const endAngle = startAngle + arc;
+    const color = PALETTE[i % PALETTE.length];
+
+    // Segment fill
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, outerR, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    // Divider lines
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, outerR, startAngle, endAngle);
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(15,17,23,0.45)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Label
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(startAngle + arc / 2);
+    const textR = outerR * 0.62;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+
+    const label = segments[i].c;
+    // Auto-scale font to fit
+    let fontSize = Math.max(8, Math.min(14, outerR * 0.055));
+    if (n < 10) fontSize = Math.min(16, outerR * 0.065);
+    ctx.font = `600 ${fontSize}px Segoe UI, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+
+    // Shadow for readability
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 3;
+
+    // Truncate if needed
+    let displayLabel = label;
+    const maxW = textR - outerR * 0.08;
+    while (ctx.measureText(displayLabel).width > maxW && displayLabel.length > 3) {
+      displayLabel = displayLabel.slice(0, -2) + '…';
+    }
+    ctx.fillText(displayLabel, textR, 0);
+    ctx.restore();
+  }
+
+  // Outer border ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Hub circle
+  const hubGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, innerHub);
+  hubGrd.addColorStop(0, '#3a3d5c');
+  hubGrd.addColorStop(1, '#1a1d28');
+  ctx.beginPath();
+  ctx.arc(cx, cy, innerHub, 0, Math.PI * 2);
+  ctx.fillStyle = hubGrd;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Centre dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, innerHub * 0.25, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fill();
+}
+
+// ── AUDIO ──────────────────────────────────────────────────────────────────────
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+}
+
+function playTick(freq, vol) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.045);
+  osc.start(audioCtx.currentTime);
+  osc.stop(audioCtx.currentTime + 0.05);
+}
+
+function playLandChime() {
+  if (!audioCtx) return;
+  const notes = [523, 659, 784, 1047];
+  notes.forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.1);
+    gain.gain.setValueAtTime(0.18, audioCtx.currentTime + i * 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.1 + 0.25);
+    osc.start(audioCtx.currentTime + i * 0.1);
+    osc.stop(audioCtx.currentTime + i * 0.1 + 0.3);
+  });
+}
+
+// ── SPIN LOGIC ────────────────────────────────────────────────────────────────
+function spin() {
+  if (spinning || segments.length === 0) return;
+  if (document.getElementById('resultOverlay').classList.contains('visible')) return;
+  initAudio();
+  spinning = true;
+  document.getElementById('spinBtn').disabled = true;
+  document.getElementById('doneOverlay').classList.remove('visible');
+
+  const n = segments.length;
+  const arc = (Math.PI * 2) / n;
+
+  // Random extra spins + land on random segment
+  const targetSegment = Math.floor(Math.random() * n);
+  const fullRotations = (5 + Math.random() * 4) * Math.PI * 2;
+  // Pointer is at top (−π/2). We want segment targetSegment to be under pointer.
+  const segMidAngle = targetSegment * arc + arc / 2;
+  // We need: currentAngle + totalSpin + segMidAngle = −π/2 (mod 2π)
+  const targetAngle = -Math.PI / 2 - segMidAngle - currentAngle;
+  const totalSpin = fullRotations + ((targetAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+
+  const duration = 4000 + Math.random() * 1500;
+  const startTime = performance.now();
+  const startAngle = currentAngle;
+
+  let lastTickAngle = currentAngle;
+  let lastTickTime = 0;
+
+  function easeOut(t) {
+    return 1 - Math.pow(1 - t, 4);
+  }
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = easeOut(progress);
+    currentAngle = startAngle + totalSpin * eased;
+    drawWheel();
+
+    // Tick sounds
+    const speed = (totalSpin * (1 - Math.pow(1 - progress, 3))) / duration * 1000;
+    const tickInterval = Math.max(30, 180 - speed * 12);
+    const angleChange = Math.abs(currentAngle - lastTickAngle);
+    const arcPerSeg = (Math.PI * 2) / n;
+    if (angleChange > arcPerSeg * 0.5 && now - lastTickTime > tickInterval) {
+      const freqFactor = 1 - progress;
+      const freq = 280 + freqFactor * 420;
+      const vol = 0.05 + freqFactor * 0.1;
+      playTick(freq, vol);
+      lastTickAngle = currentAngle;
+      lastTickTime = now;
+    }
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // Landed
+      currentAngle = startAngle + totalSpin;
+      spinning = false;
+      playLandChime();
+      showResult(targetSegment);
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+// ── RESULT ────────────────────────────────────────────────────────────────────
+function showResult(segIndex) {
+  const seg = segments[segIndex];
+  const color = PALETTE[segIndex % PALETTE.length];
+
+  document.getElementById('resultDot').style.background = color;
+  document.getElementById('resultCollocation').textContent = seg.c;
+  document.getElementById('resultPrompt').textContent = seg.p;
+  document.getElementById('resultOverlay').classList.add('visible');
+
+  // Remove segment
+  segments.splice(segIndex, 1);
+  updateCounter();
+
+  // Normalise angle so wheel redraws correctly
+  currentAngle = currentAngle % (Math.PI * 2);
+  drawWheel();
+
+  if (segments.length === 0) {
+    document.getElementById('spinBtn').disabled = true;
+    setTimeout(() => {
+      document.getElementById('doneOverlay').classList.add('visible');
+    }, 600);
+  } else {
+    document.getElementById('spinBtn').disabled = false;
+  }
+}
+
+function updateCounter() {
+  const c = document.getElementById('counter');
+  c.innerHTML = `${segments.length} <span>left</span>`;
+}
+
+// ── RESET ─────────────────────────────────────────────────────────────────────
+document.getElementById('btnReset').addEventListener('click', () => {
+  segments = [...ALL_COLLOCATIONS];
+  currentAngle = 0;
+  spinning = false;
+  document.getElementById('spinBtn').disabled = false;
+  document.getElementById('resultOverlay').classList.remove('visible');
+  document.getElementById('doneOverlay').classList.remove('visible');
+  updateCounter();
+  drawWheel();
+});
+
+// ── SPIN BUTTON ───────────────────────────────────────────────────────────────
+document.getElementById('spinBtn').addEventListener('click', spin);
+
+// ── MODAL CLOSE ───────────────────────────────────────────────────────────────
+function closeResultModal() {
+  document.getElementById('resultOverlay').classList.remove('visible');
+}
+document.getElementById('modalClose').addEventListener('click', closeResultModal);
+
+// ── DONE RESET BUTTON ─────────────────────────────────────────────────────────
+document.getElementById('doneResetBtn').addEventListener('click', () => {
+  segments = [...ALL_COLLOCATIONS];
+  currentAngle = 0;
+  spinning = false;
+  document.getElementById('spinBtn').disabled = false;
+  document.getElementById('resultOverlay').classList.remove('visible');
+  document.getElementById('doneOverlay').classList.remove('visible');
+  updateCounter();
+  drawWheel();
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+resizeCanvas();
+</script>
+</body>
+</html>
